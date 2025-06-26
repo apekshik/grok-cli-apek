@@ -11,6 +11,7 @@ import process from 'node:process';
 import { UseHistoryManagerReturn } from './useHistoryManager.js';
 import { useStateAndRef } from './useStateAndRef.js';
 import {
+  AuthType,
   Config,
   GitService,
   Logger,
@@ -243,6 +244,99 @@ export const useSlashCommandProcessor = (
         description: 'change the auth method',
         action: (_mainCommand, _subCommand, _args) => {
           openAuthDialog();
+        },
+      },
+      {
+        name: 'provider',
+        altName: 'model',
+        description: 'show current provider/model or switch between Grok and Gemini. Use /provider grok-mini for Grok 3 Mini',
+        action: async (_mainCommand, subCommand, _args) => {
+          if (!config) {
+            addMessage({
+              type: MessageType.ERROR,
+              content: 'Configuration not available',
+              timestamp: new Date(),
+            });
+            return;
+          }
+
+          const currentProvider = config.getProviderDisplayName();
+          const currentModel = config.getModel();
+          
+          if (!subCommand) {
+            // Show current provider info
+            addMessage({
+              type: MessageType.INFO,
+              content: `Current provider: ${currentProvider}\nCurrent model: ${currentModel}\n\nUsage:\n/provider grok - Switch to Grok 3 Latest\n/provider grok-mini - Switch to Grok 3 Mini\n/provider gemini - Switch to Gemini`,
+              timestamp: new Date(),
+            });
+            return;
+          }
+
+          if (subCommand.toLowerCase() === 'grok' || subCommand.toLowerCase() === 'grok-mini') {
+            // Check if Grok API key is available
+            if (!process.env.XAI_API_KEY) {
+              addMessage({
+                type: MessageType.ERROR,
+                content: 'XAI_API_KEY environment variable not found. Please set your Grok API key first.',
+                timestamp: new Date(),
+              });
+              return;
+            }
+            
+            const isGrokMini = subCommand.toLowerCase() === 'grok-mini';
+            const modelName = isGrokMini ? 'grok-3-mini-latest' : 'grok-3-latest';
+            
+            // Switch to Grok
+            try {
+              await config.refreshAuth(AuthType.USE_GROK);
+              // Set the specific model after switching
+              config.setModel(modelName);
+              addMessage({
+                type: MessageType.INFO,
+                content: `✅ Switched to Grok successfully! New conversations will use ${isGrokMini ? 'Grok 3 Mini' : 'Grok 3'} with ${modelName} model.`,
+                timestamp: new Date(),
+              });
+            } catch (error) {
+              addMessage({
+                type: MessageType.ERROR,
+                content: `Failed to switch to Grok: ${error instanceof Error ? error.message : String(error)}`,
+                timestamp: new Date(),
+              });
+            }
+          } else if (subCommand.toLowerCase() === 'gemini') {
+            // Check if Gemini API key is available
+            if (!process.env.GEMINI_API_KEY) {
+              addMessage({
+                type: MessageType.ERROR,
+                content: 'GEMINI_API_KEY environment variable not found. Please set your Gemini API key first.',
+                timestamp: new Date(),
+              });
+              return;
+            }
+
+            // Switch to Gemini
+            try {
+              await config.refreshAuth(AuthType.USE_GEMINI);
+              addMessage({
+                type: MessageType.INFO,
+                content: '✅ Switched to Gemini successfully! New conversations will use Gemini.',
+                timestamp: new Date(),
+              });
+            } catch (error) {
+              addMessage({
+                type: MessageType.ERROR,
+                content: `Failed to switch to Gemini: ${error instanceof Error ? error.message : String(error)}`,
+                timestamp: new Date(),
+              });
+            }
+          } else {
+            addMessage({
+              type: MessageType.ERROR,
+              content: `Unknown provider: ${subCommand}\n\nAvailable providers:\n- grok (Grok 3 Latest)\n- grok-mini (Grok 3 Mini)\n- gemini`,
+              timestamp: new Date(),
+            });
+          }
         },
       },
       {

@@ -11,7 +11,7 @@ export const DEFAULT_TOKEN_LIMIT = 1_048_576;
 
 export function tokenLimit(model: Model): TokenCount {
   // Add other models as they become relevant or if specified by config
-  // Pulled from https://ai.google.dev/gemini-api/docs/models
+  // Pulled from https://ai.google.dev/gemini-api/docs/models and https://docs.x.ai/docs/models
   switch (model) {
     case 'gemini-1.5-pro':
       return 2_097_152;
@@ -25,6 +25,11 @@ export function tokenLimit(model: Model): TokenCount {
       return 1_048_576;
     case 'gemini-2.0-flash-preview-image-generation':
       return 32_000;
+    // Grok models from xAI
+    case 'grok-3-latest':
+    case 'grok-3-mini-latest':
+    case 'grok-beta':
+      return 131_072; // 131K tokens as per xAI documentation
     default:
       return DEFAULT_TOKEN_LIMIT;
   }

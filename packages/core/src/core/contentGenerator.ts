@@ -38,6 +38,7 @@ export enum AuthType {
   LOGIN_WITH_GOOGLE_PERSONAL = 'oauth-personal',
   USE_GEMINI = 'gemini-api-key',
   USE_VERTEX_AI = 'vertex-ai',
+  USE_GROK = 'grok-api-key',
 }
 
 export type ContentGeneratorConfig = {
@@ -45,6 +46,7 @@ export type ContentGeneratorConfig = {
   apiKey?: string;
   vertexai?: boolean;
   authType?: AuthType | undefined;
+  provider?: 'gemini' | 'grok';
 };
 
 export async function createContentGeneratorConfig(
@@ -56,6 +58,7 @@ export async function createContentGeneratorConfig(
   const googleApiKey = process.env.GOOGLE_API_KEY;
   const googleCloudProject = process.env.GOOGLE_CLOUD_PROJECT;
   const googleCloudLocation = process.env.GOOGLE_CLOUD_LOCATION;
+  const grokApiKey = process.env.XAI_API_KEY;
 
   // Use runtime model from config if available, otherwise fallback to parameter or default
   const effectiveModel = config?.getModel?.() || model || DEFAULT_GEMINI_MODEL;
@@ -97,6 +100,15 @@ export async function createContentGeneratorConfig(
     return contentGeneratorConfig;
   }
 
+  // Handle Grok auth
+  if (authType === AuthType.USE_GROK && grokApiKey) {
+    contentGeneratorConfig.apiKey = grokApiKey;
+    contentGeneratorConfig.model = model || 'grok-3-latest';
+    contentGeneratorConfig.provider = 'grok';
+    
+    return contentGeneratorConfig;
+  }
+
   return contentGeneratorConfig;
 }
 
@@ -109,6 +121,13 @@ export async function createContentGenerator(
       'User-Agent': `GeminiCLI/${version} (${process.platform}; ${process.arch})`,
     },
   };
+
+  // Route to Grok implementation
+  if (config.provider === 'grok') {
+    const { createGrokContentGenerator } = await import('./grokContentGenerator.js');
+    return createGrokContentGenerator(config);
+  }
+
   if (config.authType === AuthType.LOGIN_WITH_GOOGLE_PERSONAL) {
     return createCodeAssistContentGenerator(httpOptions, config.authType);
   }

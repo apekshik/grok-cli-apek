@@ -231,10 +231,14 @@ export class Config {
     const _isAuthMethodSwitch =
       previousAuthType && previousAuthType !== authMethod;
 
-    // Always use the original default model when switching auth methods
-    // This ensures users don't stay on Flash after switching between auth types
-    // and allows API key users to get proper fallback behavior from getEffectiveModel
-    const modelToUse = this.model; // Use the original default model
+    // Use appropriate model based on auth method
+    let modelToUse = this.model; // Default to original model
+    
+    if (authMethod === AuthType.USE_GROK) {
+      modelToUse = 'grok-3-latest'; // Use Grok's latest model when switching to Grok
+    } else if (authMethod === AuthType.USE_GEMINI) {
+      modelToUse = 'gemini-1.5-flash'; // Use Gemini's default model
+    }
 
     // Temporarily clear contentGeneratorConfig to prevent getModel() from returning
     // the previous session's model (which might be Flash)
@@ -268,6 +272,21 @@ export class Config {
 
   getModel(): string {
     return this.contentGeneratorConfig?.model || this.model;
+  }
+
+  getProvider(): 'gemini' | 'grok' {
+    return this.contentGeneratorConfig?.provider || 'gemini';
+  }
+
+  getProviderDisplayName(): string {
+    const provider = this.getProvider();
+    return provider === 'grok' ? 'Grok' : 'Gemini';
+  }
+
+  getModelWithProvider(): string {
+    const model = this.getModel();
+    const provider = this.getProviderDisplayName();
+    return `${provider} (${model})`;
   }
 
   setModel(newModel: string): void {

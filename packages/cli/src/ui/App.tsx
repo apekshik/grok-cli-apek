@@ -115,7 +115,7 @@ const App = ({ config, settings, startupWarnings = [] }: AppProps) => {
   const [editorError, setEditorError] = useState<string | null>(null);
   const [footerHeight, setFooterHeight] = useState<number>(0);
   const [corgiMode, setCorgiMode] = useState(false);
-  const [currentModel, setCurrentModel] = useState(config.getModel());
+  const [currentModel, setCurrentModel] = useState(config.getModelWithProvider());
   const [shellModeActive, setShellModeActive] = useState(false);
   const [showErrorDetails, setShowErrorDetails] = useState<boolean>(false);
   const [showToolDescriptions, setShowToolDescriptions] =
@@ -218,9 +218,9 @@ const App = ({ config, settings, startupWarnings = [] }: AppProps) => {
   // Watch for model changes (e.g., from Flash fallback)
   useEffect(() => {
     const checkModelChange = () => {
-      const configModel = config.getModel();
-      if (configModel !== currentModel) {
-        setCurrentModel(configModel);
+      const configModelWithProvider = config.getModelWithProvider();
+      if (configModelWithProvider !== currentModel) {
+        setCurrentModel(configModelWithProvider);
       }
     };
 

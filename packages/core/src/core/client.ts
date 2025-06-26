@@ -233,16 +233,20 @@ export class GeminiClient {
       yield event;
     }
     if (!turn.pendingToolCalls.length && signal && !signal.aborted) {
-      const nextSpeakerCheck = await checkNextSpeaker(
-        this.getChat(),
-        this,
-        signal,
-      );
-      if (nextSpeakerCheck?.next_speaker === 'model') {
-        const nextRequest = [{ text: 'Please continue.' }];
-        // This recursive call's events will be yielded out, but the final
-        // turn object will be from the top-level call.
-        yield* this.sendMessageStream(nextRequest, signal, turns - 1);
+      // Only use checkNextSpeaker for Gemini providers, as it relies on Gemini-specific features
+      const provider = this.config.getProvider();
+      if (provider === 'gemini') {
+        const nextSpeakerCheck = await checkNextSpeaker(
+          this.getChat(),
+          this,
+          signal,
+        );
+        if (nextSpeakerCheck?.next_speaker === 'model') {
+          const nextRequest = [{ text: 'Please continue.' }];
+          // This recursive call's events will be yielded out, but the final
+          // turn object will be from the top-level call.
+          yield* this.sendMessageStream(nextRequest, signal, turns - 1);
+        }
       }
     }
     return turn;
@@ -252,9 +256,11 @@ export class GeminiClient {
     contents: Content[],
     schema: SchemaUnion,
     abortSignal: AbortSignal,
-    model: string = DEFAULT_GEMINI_FLASH_MODEL,
+    model?: string,
     config: GenerateContentConfig = {},
   ): Promise<Record<string, unknown>> {
+    // Use current model from config if not specified, fallback to DEFAULT_GEMINI_FLASH_MODEL for Gemini
+    const modelToUse = model || this.config.getModel() || DEFAULT_GEMINI_FLASH_MODEL;
     try {
       const userMemory = this.config.getUserMemory();
       const systemInstruction = getCoreSystemPrompt(userMemory);
@@ -266,7 +272,7 @@ export class GeminiClient {
 
       const apiCall = () =>
         this.getContentGenerator().generateContent({
-          model,
+          model: modelToUse,
           config: {
             ...requestConfig,
             systemInstruction,
