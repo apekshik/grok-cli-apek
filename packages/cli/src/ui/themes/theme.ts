@@ -53,7 +53,7 @@ export const darkTheme: ColorsTheme = {
   AccentRed: '#F38BA8',
   Comment: '#6C7086',
   Gray: '#6C7086',
-  GradientColors: ['#4796E4', '#847ACE', '#C3677F'],
+  GradientColors: ['#bbdbfc', '#d0d7ff', '#e8f4ff', '#f4feff'],
 };
 
 export const ansiTheme: ColorsTheme = {
