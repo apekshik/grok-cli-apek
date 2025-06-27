@@ -22,6 +22,8 @@ import {
   recordFileOperationMetric,
   FileOperation,
 } from '../telemetry/metrics.js';
+import { tokenLimit } from '../core/tokenLimits.js';
+import { getResponseText } from '../utils/generateContentResponseUtilities.js';
 
 /**
  * Parameters for the ReadManyFilesTool.
@@ -377,6 +379,11 @@ Use this tool when the user's query implies needing the content of several files
 
     const sortedFiles = Array.from(filesToConsider).sort();
 
+    // Check if we should use smart file selection for Grok
+    if (this.shouldUseSmartSelection(sortedFiles.length)) {
+      return await this.executeWithSmartSelection(sortedFiles, params, signal);
+    }
+
     for (const filePath of sortedFiles) {
       const relativePathForDisplay = path
         .relative(toolBaseDir, filePath)
@@ -490,5 +497,228 @@ Use this tool when the user's query implies needing the content of several files
       llmContent: contentParts,
       returnDisplay: displayMessage.trim(),
     };
+  }
+
+  /**
+   * Execute with smart file selection for Grok - create previews and let Grok choose files
+   */
+  private async executeWithSmartSelection(
+    sortedFiles: string[],
+    params: ReadManyFilesParams,
+    signal?: AbortSignal
+  ): Promise<ToolResult> {
+    try {
+      // Stage 1: Create file previews
+      const previews: string[] = [];
+      const maxPreviewFiles = Math.min(sortedFiles.length, 100); // Limit to prevent too many API calls
+      
+      for (let i = 0; i < maxPreviewFiles; i++) {
+        const preview = await this.createFilePreview(sortedFiles[i]);
+        previews.push(`${i + 1}. ${preview}`);
+      }
+
+      const previewContent = previews.join('\n');
+      
+      // Stage 2: Ask Grok to select most relevant files
+      const geminiClient = this.config.getGeminiClient();
+      const selectionPrompt = `Based on the user's query and these file previews, select the 15-20 most relevant files by their numbers (1-${maxPreviewFiles}). 
+
+File previews:
+${previewContent}
+
+Return only the numbers separated by commas (e.g., "1,5,12,25"). Focus on files that would best answer the user's question about the codebase flow.`;
+
+      const selectionResponse = await geminiClient.generateContent(
+        [{ role: 'user', parts: [{ text: selectionPrompt }] }],
+        {
+          temperature: 0.1,
+          maxOutputTokens: 200,
+        },
+        signal || AbortSignal.timeout(30000)
+      );
+
+      // Stage 3: Parse the selection and read selected files
+      const responseText = getResponseText(selectionResponse);
+      const selectedNumbers = this.parseSelectionResponse(responseText || '');
+      const selectedFiles = selectedNumbers
+        .map(num => sortedFiles[num - 1])
+        .filter(Boolean)
+        .slice(0, 20); // Cap at 20 files max
+
+      if (selectedFiles.length === 0) {
+        // Fallback to first 10 files if selection parsing failed
+        selectedFiles.push(...sortedFiles.slice(0, 10));
+      }
+
+      // Stage 4: Read selected files with token budget management
+      const contentParts: PartListUnion = [];
+      const processedFilesRelativePaths: string[] = [];
+      let totalTokens = 0;
+      const maxTokenBudget = 100000; // Leave 31K tokens for conversation context
+
+      for (const filePath of selectedFiles) {
+        if (signal?.aborted) break;
+
+        const relativePathForDisplay = path.relative(this.targetDir, filePath).replace(/\\/g, '/');
+        
+        try {
+          const fileReadResult = await processSingleFileContent(filePath, DEFAULT_ENCODING);
+          if (typeof fileReadResult.llmContent === 'string') {
+            const contentTokens = this.estimateTokens(fileReadResult.llmContent);
+            
+            if (totalTokens + contentTokens > maxTokenBudget) {
+              // Truncate content if it would exceed budget
+              const remainingTokens = maxTokenBudget - totalTokens;
+              const truncatedLength = Math.max(0, remainingTokens * 4); // Rough char estimate
+              const truncatedContent = fileReadResult.llmContent.substring(0, truncatedLength);
+              
+              const separator = DEFAULT_OUTPUT_SEPARATOR_FORMAT.replace('{filePath}', relativePathForDisplay);
+              contentParts.push(`${separator}\n\n${truncatedContent}\n\n[Content truncated due to token limits]\n\n`);
+              processedFilesRelativePaths.push(relativePathForDisplay);
+              break;
+            }
+            
+            const separator = DEFAULT_OUTPUT_SEPARATOR_FORMAT.replace('{filePath}', relativePathForDisplay);
+            contentParts.push(`${separator}\n\n${fileReadResult.llmContent}\n\n`);
+            processedFilesRelativePaths.push(relativePathForDisplay);
+            totalTokens += contentTokens;
+          }
+        } catch (error) {
+          // Skip files that can't be read
+          continue;
+        }
+      }
+
+      const displayMessage = this.createSmartSelectionDisplayMessage(
+        sortedFiles.length,
+        selectedFiles.length,
+        processedFilesRelativePaths.length,
+        totalTokens
+      );
+
+      return {
+        llmContent: contentParts.length > 0 ? contentParts : ['No files could be read with the available token budget.'],
+        returnDisplay: displayMessage,
+      };
+
+    } catch (error) {
+      // Fallback to regular execution if smart selection fails
+      return this.executeRegularSelection(sortedFiles.slice(0, 10), params, signal);
+    }
+  }
+
+  /**
+   * Parse Grok's file selection response
+   */
+  private parseSelectionResponse(response: string): number[] {
+    const numbers: number[] = [];
+    const matches = response.match(/\d+/g);
+    if (matches) {
+      for (const match of matches) {
+        const num = parseInt(match, 10);
+        if (num > 0 && num <= 100) {
+          numbers.push(num);
+        }
+      }
+    }
+    return numbers;
+  }
+
+  /**
+   * Create display message for smart selection results
+   */
+  private createSmartSelectionDisplayMessage(
+    totalFiles: number,
+    selectedFiles: number,
+    processedFiles: number,
+    tokenCount: number
+  ): string {
+    return `### ReadManyFiles Result (Target Dir: \`${this.targetDir}\`)
+
+**Smart Selection Applied for Grok**: Analyzed ${totalFiles} files, selected ${selectedFiles} most relevant files, successfully processed ${processedFiles} files.
+
+**Token Usage**: ~${tokenCount.toLocaleString()} tokens used out of 131K limit.
+
+**Files processed**: ${processedFiles > 0 ? 'Successfully read and concatenated content.' : 'No files could be processed within token limits.'}
+
+*Note: Smart file selection was used to optimize for Grok's context window. Some files may have been excluded or truncated.*`;
+  }
+
+  /**
+   * Fallback method for regular file processing
+   */
+  private async executeRegularSelection(
+    files: string[],
+    params: ReadManyFilesParams,
+    signal?: AbortSignal
+  ): Promise<ToolResult> {
+    // Simplified version that just reads first 10 files without smart selection
+    const contentParts: PartListUnion = [];
+    const processedFiles: string[] = [];
+
+    for (const filePath of files.slice(0, 10)) {
+      if (signal?.aborted) break;
+      
+      try {
+        const fileReadResult = await processSingleFileContent(filePath, DEFAULT_ENCODING);
+        if (typeof fileReadResult.llmContent === 'string') {
+          const relativePathForDisplay = path.relative(this.targetDir, filePath).replace(/\\/g, '/');
+          const separator = DEFAULT_OUTPUT_SEPARATOR_FORMAT.replace('{filePath}', relativePathForDisplay);
+          contentParts.push(`${separator}\n\n${fileReadResult.llmContent}\n\n`);
+          processedFiles.push(relativePathForDisplay);
+        }
+      } catch (error) {
+        continue;
+      }
+    }
+
+    return {
+      llmContent: contentParts.length > 0 ? contentParts : ['No files could be read.'],
+      returnDisplay: `### ReadManyFiles Result (Fallback Mode)\n\nProcessed ${processedFiles.length} files due to context limitations.`,
+    };
+  }
+
+  /**
+   * Create file previews for intelligent selection - reads first few lines of each file
+   */
+  private async createFilePreview(filePath: string): Promise<string> {
+    try {
+      const fileType = detectFileType(filePath);
+      if (fileType !== 'text') {
+        const relativePathForDisplay = path.relative(this.targetDir, filePath).replace(/\\/g, '/');
+        return `${relativePathForDisplay}: [${fileType} file]`;
+      }
+
+      const fileReadResult = await processSingleFileContent(filePath, DEFAULT_ENCODING, 5, 0);
+      if (typeof fileReadResult.llmContent === 'string') {
+        const lines = fileReadResult.llmContent.split('\n').slice(0, 5);
+        const relativePathForDisplay = path.relative(this.targetDir, filePath).replace(/\\/g, '/');
+        return `${relativePathForDisplay}: ${lines.join(' | ')}`;
+      }
+      return `${path.relative(this.targetDir, filePath).replace(/\\/g, '/')}: [binary file]`;
+    } catch (error) {
+      const relativePathForDisplay = path.relative(this.targetDir, filePath).replace(/\\/g, '/');
+      return `${relativePathForDisplay}: [error reading file]`;
+    }
+  }
+
+  /**
+   * Check if we should use smart file selection based on provider and file count
+   */
+  private shouldUseSmartSelection(fileCount: number): boolean {
+    const provider = this.config.getProvider();
+    const model = this.config.getModel();
+    const limit = tokenLimit(model);
+    
+    // Use smart selection for Grok models (131K token limit) when many files found
+    return provider === 'grok' && fileCount > 20 && limit <= 131_072;
+  }
+
+  /**
+   * Estimate tokens for content using simple heuristic
+   */
+  private estimateTokens(content: string): number {
+    // Rough estimate: ~4 characters per token
+    return Math.ceil(content.length / 4);
   }
 }

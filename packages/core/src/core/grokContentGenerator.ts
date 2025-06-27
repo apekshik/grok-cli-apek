@@ -115,9 +115,17 @@ export class GrokContentGenerator implements ContentGenerator {
     // Add tools if present
     if (request.config?.tools && request.config.tools.length > 0) {
       const tools = this.convertToolsToOpenAIFormat(request.config.tools);
+      console.log('DEBUG: Adding tools to Grok request:', JSON.stringify(tools, null, 2));
       openaiRequest.tools = tools;
       openaiRequest.tool_choice = 'auto';
     }
+
+    console.log('DEBUG: Final Grok API request:', JSON.stringify({ 
+      model: openaiRequest.model, 
+      messages: openaiRequest.messages, 
+      tools: openaiRequest.tools?.length || 0,
+      tool_choice: openaiRequest.tool_choice 
+    }, null, 2));
 
     return openaiRequest;
   }
@@ -165,13 +173,81 @@ export class GrokContentGenerator implements ContentGenerator {
 
     const parts: Part[] = [];
     const functionCalls: any[] = [];
+    let cleanedTextContent = message.content || '';
 
-    // Add text content
-    if (message.content) {
-      parts.push({ text: message.content });
+    // Debug logging to understand the response format
+    console.log('DEBUG: Raw grok response content:', JSON.stringify(message.content, null, 2));
+    console.log('DEBUG: Tool calls:', JSON.stringify(message.tool_calls, null, 2));
+
+    // Parse custom function call format from grok-mini
+    if (message.content && message.content.includes('[function_call]')) {
+      const functionCallMatches = message.content.matchAll(/\[function_call\](.*?)\[\/function_call\]/gs);
+      
+      for (const match of functionCallMatches) {
+        try {
+          const functionCallData = JSON.parse(match[1].trim());
+          const functionCall = {
+            id: `grok_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            name: functionCallData.action,
+            args: functionCallData.action_input || {},
+          };
+          parts.push({ functionCall });
+          functionCalls.push(functionCall);
+        } catch (error) {
+          console.warn('Failed to parse function call from grok response:', error);
+        }
+      }
+      
+      // Remove function call blocks from text content
+      cleanedTextContent = message.content.replace(/\[function_call\].*?\[\/function_call\]/gs, '').trim();
     }
 
-    // Convert tool calls to function calls
+    // Check for Grok Mini "[tool_call: func_name for param_name 'value']" pattern
+    if (message.content && message.content.includes('[tool_call:')) {
+      const toolCallMatches = message.content.matchAll(/\[tool_call:\s*(\w+)\s+for\s+(\w+)\s+['"]([^'"]+)['"]\]/g);
+      
+      for (const match of toolCallMatches) {
+        const functionName = match[1];
+        const paramName = match[2];
+        const paramValue = match[3];
+        const functionCall = {
+          id: `grok_mini_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          name: functionName,
+          args: { [paramName]: paramValue },
+        };
+        parts.push({ functionCall });
+        functionCalls.push(functionCall);
+      }
+      
+      // Remove tool call text
+      cleanedTextContent = message.content.replace(/\s*\[tool_call:[^\]]+\]\s*/g, '').trim();
+    }
+
+    // Check for simple "Calling function X" pattern
+    if (message.content && message.content.includes('Calling function ')) {
+      const simpleCallMatches = message.content.matchAll(/Calling function (\w+)/g);
+      
+      for (const match of simpleCallMatches) {
+        const functionName = match[1];
+        const functionCall = {
+          id: `grok_simple_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          name: functionName,
+          args: {},
+        };
+        parts.push({ functionCall });
+        functionCalls.push(functionCall);
+      }
+      
+      // Remove simple function call text
+      cleanedTextContent = message.content.replace(/\s*Calling function \w+\s*/g, '').trim();
+    }
+
+    // Add cleaned text content if it exists
+    if (cleanedTextContent) {
+      parts.push({ text: cleanedTextContent });
+    }
+
+    // Convert standard OpenAI tool calls to function calls
     if (message.tool_calls) {
       for (const toolCall of message.tool_calls) {
         if (toolCall.type === 'function') {
@@ -185,8 +261,6 @@ export class GrokContentGenerator implements ContentGenerator {
         }
       }
     }
-
-    const textContent = message.content || '';
 
     return {
       candidates: [
@@ -206,7 +280,7 @@ export class GrokContentGenerator implements ContentGenerator {
           }
         : undefined,
       // Add the expected top-level properties
-      text: textContent,
+      text: cleanedTextContent,
       functionCalls: functionCalls.length > 0 ? functionCalls : undefined,
       data: undefined,
       executableCode: undefined,
@@ -217,6 +291,8 @@ export class GrokContentGenerator implements ContentGenerator {
   private async *convertStreamToGeminiFormat(
     stream: AsyncIterable<OpenAI.Chat.Completions.ChatCompletionChunk>
   ): AsyncGenerator<GenerateContentResponse> {
+    let accumulatedContent = '';
+    
     for await (const chunk of stream) {
       const choice = chunk.choices[0];
       if (!choice) continue;
@@ -224,13 +300,67 @@ export class GrokContentGenerator implements ContentGenerator {
       const delta = choice.delta;
       const parts: Part[] = [];
       const functionCalls: any[] = [];
+      let cleanedTextContent = delta.content || '';
 
-      // Add text content
+      // Accumulate content to detect complete function calls
       if (delta.content) {
-        parts.push({ text: delta.content });
+        accumulatedContent += delta.content;
       }
 
-      // Convert tool calls
+      // Check for complete function call blocks in accumulated content
+      if (accumulatedContent.includes('[function_call]') && accumulatedContent.includes('[/function_call]')) {
+        const functionCallMatches = accumulatedContent.matchAll(/\[function_call\](.*?)\[\/function_call\]/gs);
+        
+        for (const match of functionCallMatches) {
+          try {
+            const functionCallData = JSON.parse(match[1].trim());
+            const functionCall = {
+              id: `grok_stream_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+              name: functionCallData.action,
+              args: functionCallData.action_input || {},
+            };
+            parts.push({ functionCall });
+            functionCalls.push(functionCall);
+          } catch (error) {
+            console.warn('Failed to parse function call from grok stream:', error);
+          }
+        }
+        
+        // Remove processed function call blocks and update content
+        const cleanedAccumulated = accumulatedContent.replace(/\[function_call\].*?\[\/function_call\]/gs, '').trim();
+        accumulatedContent = cleanedAccumulated;
+        cleanedTextContent = (delta.content || '').replace(/\[function_call\].*?\[\/function_call\]/gs, '').trim();
+      }
+
+      // Check for complete Grok Mini tool call pattern in accumulated content
+      if (accumulatedContent.includes('[tool_call:')) {
+        const toolCallMatches = accumulatedContent.matchAll(/\[tool_call:\s*(\w+)\s+for\s+(\w+)\s+['"]([^'"]+)['"]\]/g);
+        
+        for (const match of toolCallMatches) {
+          const functionName = match[1];
+          const paramName = match[2];
+          const paramValue = match[3];
+          const functionCall = {
+            id: `grok_mini_stream_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            name: functionName,
+            args: { [paramName]: paramValue },
+          };
+          parts.push({ functionCall });
+          functionCalls.push(functionCall);
+        }
+        
+        // Remove processed tool call blocks and update content
+        const cleanedAccumulated = accumulatedContent.replace(/\s*\[tool_call:[^\]]+\]\s*/g, '').trim();
+        accumulatedContent = cleanedAccumulated;
+        cleanedTextContent = (delta.content || '').replace(/\s*\[tool_call:[^\]]+\]\s*/g, '').trim();
+      }
+
+      // Add cleaned text content if it exists
+      if (cleanedTextContent) {
+        parts.push({ text: cleanedTextContent });
+      }
+
+      // Convert standard OpenAI tool calls
       if (delta.tool_calls) {
         for (const toolCall of delta.tool_calls) {
           if (toolCall.type === 'function' && toolCall.function) {
@@ -257,7 +387,7 @@ export class GrokContentGenerator implements ContentGenerator {
             },
           ],
           // Add the expected top-level properties
-          text: delta.content || '',
+          text: cleanedTextContent,
           functionCalls: functionCalls.length > 0 ? functionCalls : undefined,
           data: undefined,
           executableCode: undefined,
