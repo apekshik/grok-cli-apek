@@ -275,7 +275,7 @@ export class Config {
   }
 
   getProvider(): 'gemini' | 'grok' {
-    return this.contentGeneratorConfig?.provider || 'gemini';
+    return this.contentGeneratorConfig?.provider || 'grok';
   }
 
   getProviderDisplayName(): string {

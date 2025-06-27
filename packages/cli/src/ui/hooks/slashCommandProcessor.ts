@@ -194,31 +194,10 @@ export const useSlashCommandProcessor = (
       {
         name: 'help',
         altName: '?',
-        description: 'for help on gemini-cli',
+        description: 'for help on grok-cli',
         action: (_mainCommand, _subCommand, _args) => {
           onDebugMessage('Opening help.');
           setShowHelp(true);
-        },
-      },
-      {
-        name: 'docs',
-        description: 'open full Gemini CLI documentation in your browser',
-        action: async (_mainCommand, _subCommand, _args) => {
-          const docsUrl = 'https://goo.gle/gemini-cli-docs';
-          if (process.env.SANDBOX && process.env.SANDBOX !== 'sandbox-exec') {
-            addMessage({
-              type: MessageType.INFO,
-              content: `Please open the following URL in your browser to view the documentation:\n${docsUrl}`,
-              timestamp: new Date(),
-            });
-          } else {
-            addMessage({
-              type: MessageType.INFO,
-              content: `Opening documentation in your browser: ${docsUrl}`,
-              timestamp: new Date(),
-            });
-            await open(docsUrl);
-          }
         },
       },
       {
@@ -620,7 +599,7 @@ export const useSlashCommandProcessor = (
           // Filter out MCP tools by checking if they have a serverName property
           const geminiTools = tools.filter((tool) => !('serverName' in tool));
 
-          let message = 'Available Gemini CLI tools:\n\n';
+          let message = 'Available Grok CLI tools:\n\n';
 
           if (geminiTools.length > 0) {
             geminiTools.forEach((tool) => {

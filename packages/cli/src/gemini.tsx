@@ -109,11 +109,13 @@ export async function main() {
       'selectedAuthType',
       AuthType.USE_GROK,
     );
-  } else if (!settings.merged.selectedAuthType && process.env.GEMINI_API_KEY) {
+  } else if (!settings.merged.selectedAuthType) {
+    // Default to Grok for Grok CLI, only use Gemini if specifically no XAI_API_KEY and GEMINI_API_KEY is set
+    const defaultAuth = !process.env.XAI_API_KEY && process.env.GEMINI_API_KEY ? AuthType.USE_GEMINI : AuthType.USE_GROK;
     settings.setValue(
       SettingScope.User,
       'selectedAuthType',
-      AuthType.USE_GEMINI,
+      defaultAuth,
     );
   }
 
@@ -286,7 +288,7 @@ async function validateNonInterActiveAuth(
     process.exit(1);
   }
 
-  selectedAuthType = selectedAuthType || (process.env.XAI_API_KEY ? AuthType.USE_GROK : AuthType.USE_GEMINI);
+  selectedAuthType = selectedAuthType || (!process.env.XAI_API_KEY && process.env.GEMINI_API_KEY ? AuthType.USE_GEMINI : AuthType.USE_GROK);
   const err = validateAuthMethod(selectedAuthType);
   if (err != null) {
     console.error(err);

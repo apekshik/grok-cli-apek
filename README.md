@@ -1,95 +1,94 @@
-# Gemini CLI
+# Grok CLI
 
-[![Gemini CLI CI](https://github.com/google-gemini/gemini-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/google-gemini/gemini-cli/actions/workflows/ci.yml)
+A command-line AI workflow tool powered by xAI's Grok that connects to your tools, understands your code, and accelerates your workflows.
 
-![Gemini CLI Screenshot](./docs/assets/gemini-screenshot.png)
+![Grok CLI Screenshot](./docs/assets/grok-cli-screenshot.png)
 
-This repository contains the Gemini CLI, a command-line AI workflow tool that connects to your
-tools, understands your code and accelerates your workflows.
+With the Grok CLI you can:
 
-With the Gemini CLI you can:
-
-- Query and edit large codebases in and beyond Gemini's 1M token context window.
-- Generate new apps from PDFs or sketches, using Gemini's multimodal capabilities.
-- Automate operational tasks, like querying pull requests or handling complex rebases.
-- Use tools and MCP servers to connect new capabilities, including [media generation with Imagen,
-  Veo or Lyria](https://github.com/GoogleCloudPlatform/vertex-ai-creative-studio/tree/main/experiments/mcp-genmedia)
-- Ground your queries with the [Google Search](https://ai.google.dev/gemini-api/docs/grounding)
-  tool, built in to Gemini.
+- Query and edit large codebases with intelligent context management for Grok's token limits
+- Generate new apps and solve complex coding problems using Grok's reasoning capabilities
+- Automate operational tasks, like querying pull requests or handling complex rebases
+- Use tools and MCP servers to connect new capabilities
+- Smart file selection that adapts to Grok's context window for optimal performance
 
 ## Quickstart
 
 1. **Prerequisites:** Ensure you have [Node.js version 18](https://nodejs.org/en/download) or higher installed.
-2. **Run the CLI:** Execute the following command in your terminal:
+
+2. **Install globally:**
 
    ```bash
-   npx https://github.com/google-gemini/gemini-cli
+   npm install -g @apekshik/grok-cli-apek
    ```
 
-   Or install it with:
+3. **Set up your xAI API Key:**
+
+   Get your API key from [xAI Console](https://console.x.ai/) and set it as an environment variable:
 
    ```bash
-   npm install -g @google/gemini-cli
-   gemini
+   export XAI_API_KEY="your-api-key-here"
    ```
 
-3. **Pick a color theme**
-4. **Authenticate:** When prompted, sign in with your personal Google account. This will grant you up to 60 model requests per minute and 1,000 model requests per day using Gemini.
-
-You are now ready to use the Gemini CLI!
-
-### For advanced use or increased limits:
-
-If you need to use a specific model or require a higher request capacity, you can use an API key:
-
-1. Generate a key from [Google AI Studio](https://aistudio.google.com/apikey).
-2. Set it as an environment variable in your terminal. Replace `YOUR_API_KEY` with your generated key.
+4. **Run the CLI:**
 
    ```bash
-   export GEMINI_API_KEY="YOUR_API_KEY"
+   grok
    ```
 
-For other authentication methods, including Google Workspace accounts, see the [authentication](./docs/cli/authentication.md) guide.
+5. **Pick a color theme** and start chatting with Grok!
+
+You are now ready to use the Grok CLI!
 
 ## Examples
 
-Once the CLI is running, you can start interacting with Gemini from your shell.
+Once the CLI is running, you can start interacting with Grok from your shell.
 
 You can start a project from a new directory:
 
 ```sh
 cd new-project/
-gemini
-> Write me a Gemini Discord bot that answers questions using a FAQ.md file I will provide
+grok
+> Write me a Discord bot that answers questions using a FAQ.md file I will provide
 ```
 
 Or work with an existing project:
 
 ```sh
-git clone https://github.com/google-gemini/gemini-cli
-cd gemini-cli
-gemini
+git clone https://github.com/apekshik/grok-cli-apek
+cd grok-cli-apek
+grok
 > Give me a summary of all of the changes that went in yesterday
 ```
 
-### Next steps
+## Provider Switching
 
-- Learn how to [contribute to or build from the source](./CONTRIBUTING.md).
-- Explore the available **[CLI Commands](./docs/cli/commands.md)**.
-- If you encounter any issues, review the **[Troubleshooting guide](./docs/troubleshooting.md)**.
-- For more comprehensive documentation, see the [full documentation](./docs/index.md).
-- Take a look at some [popular tasks](#popular-tasks) for more inspiration.
+The CLI supports both Grok and Gemini providers. You can switch between them during a conversation:
 
-### Troubleshooting
+```bash
+# Switch to Grok (default)
+/provider grok
 
-Head over to the [troubleshooting](docs/troubleshooting.md) guide if you're
-having issues.
+# Switch to Grok Mini for faster responses
+/provider grok-mini
+
+# Switch to Gemini (requires GEMINI_API_KEY)
+/provider gemini
+```
+
+## Smart Context Management
+
+The Grok CLI includes intelligent context management that automatically adapts to Grok's token limitations:
+
+- **Automatic file selection**: When reading many files, it previews them and asks Grok to select the most relevant ones
+- **Token-aware processing**: Tracks token usage and prevents API errors
+- **Graceful fallbacks**: Multiple strategies to handle large codebases effectively
 
 ## Popular tasks
 
 ### Explore a new codebase
 
-Start by `cd`ing into an existing or newly-cloned repository and running `gemini`.
+Start by `cd`ing into an existing or newly-cloned repository and running `grok`.
 
 ```text
 > Describe the main pieces of this system's architecture.
@@ -106,31 +105,91 @@ Start by `cd`ing into an existing or newly-cloned repository and running `gemini
 ```
 
 ```text
-> Help me migrate this codebase to the latest version of Java. Start with a plan.
+> Help me migrate this codebase to the latest version of Node.js. Start with a plan.
 ```
 
 ### Automate your workflows
-
-Use MCP servers to integrate your local system tools with your enterprise collaboration suite.
-
-```text
-> Make me a slide deck showing the git history from the last 7 days, grouped by feature and team member.
-```
-
-```text
-> Make a full-screen web app for a wall display to show our most interacted-with GitHub issues.
-```
-
-### Interact with your system
 
 ```text
 > Convert all the images in this directory to png, and rename them to use dates from the exif data.
 ```
 
 ```text
-> Organise my PDF invoices by month of expenditure.
+> Organize my PDF invoices by month of expenditure.
 ```
 
-## Terms of Service and Privacy Notice
+## Authentication
 
-For details on the terms of service and privacy notice applicable to your use of Gemini CLI, see the [Terms of Service and Privacy Notice](./docs/tos-privacy.md).
+### xAI API Key (Recommended)
+
+1. Sign up at [xAI Console](https://console.x.ai/)
+2. Generate an API key
+3. Set it as an environment variable:
+
+   ```bash
+   export XAI_API_KEY="your-api-key-here"
+   ```
+
+### Alternative: Gemini API Key
+
+You can also use Google's Gemini API by setting:
+
+```bash
+export GEMINI_API_KEY="your-gemini-api-key"
+```
+
+Get your Gemini API key from [Google AI Studio](https://aistudio.google.com/apikey).
+
+## CLI Commands
+
+Available slash commands:
+
+- `/help` - Show help information
+- `/provider <provider>` - Switch between grok, grok-mini, and gemini
+- `/clear` - Clear conversation history
+- `/theme` - Change color theme
+- `/memory` - Show current context files
+- `/tools` - List available tools
+
+## Features
+
+- **Context Files**: Create `GROK.md` files to provide persistent context
+- **File Operations**: Read, edit, and write files with confirmation
+- **Shell Integration**: Run shell commands with `!command`
+- **Web Search**: Built-in web search capabilities
+- **MCP Support**: Model Context Protocol for extensible tools
+
+## Installation from Source
+
+```bash
+git clone https://github.com/apekshik/grok-cli-apek
+cd grok-cli-apek
+npm install
+npm run build
+npm run bundle
+npm link
+```
+
+## Troubleshooting
+
+### Common Issues
+
+1. **API Key Issues**: Make sure `XAI_API_KEY` is set correctly
+2. **Token Limits**: The CLI automatically handles Grok's context limits with smart selection
+3. **Node.js Version**: Ensure you're using Node.js 18 or higher
+
+### Debug Mode
+
+Run with debug mode for detailed logging:
+
+```bash
+grok --debug
+```
+
+## Contributing
+
+Contributions are welcome! Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
+
+## License
+
+Apache-2.0 License - see [LICENSE](./LICENSE) for details.

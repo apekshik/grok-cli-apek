@@ -14,6 +14,7 @@ import {
   getCurrentGeminiMdFilename,
   ApprovalMode,
   GEMINI_CONFIG_DIR as GEMINI_DIR,
+  DEFAULT_MODEL,
   DEFAULT_GEMINI_MODEL,
   DEFAULT_GEMINI_EMBEDDING_MODEL,
   FileDiscoveryService,
@@ -61,7 +62,7 @@ async function parseArguments(): Promise<CliArgs> {
       alias: 'm',
       type: 'string',
       description: `Model`,
-      default: process.env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL,
+      default: process.env.GEMINI_MODEL || DEFAULT_MODEL,
     })
     .option('prompt', {
       alias: 'p',

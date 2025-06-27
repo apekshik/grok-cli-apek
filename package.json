@@ -1,6 +1,6 @@
 {
-  "name": "@google/gemini-cli",
-  "version": "0.1.5",
+  "name": "@apekshik/grok-cli-apek",
+  "version": "0.1.6",
   "engines": {
     "node": ">=18.0.0"
   },
@@ -8,7 +8,24 @@
   "workspaces": [
     "packages/*"
   ],
-  "repository": "google-gemini/gemini-cli",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/apekshik/grok-cli-apek.git"
+  },
+  "keywords": [
+    "grok",
+    "cli",
+    "ai",
+    "xai",
+    "assistant",
+    "tool"
+  ],
+  "author": "apekshik",
+  "license": "Apache-2.0",
+  "description": "A command-line AI workflow tool powered by xAI's Grok",
+  "publishConfig": {
+    "access": "public"
+  },
   "config": {
     "sandboxImageUri": "us-docker.pkg.dev/gemini-code-dev/gemini-cli/sandbox:0.1.4"
   },
@@ -51,7 +68,7 @@
     "start:gcp": "concurrently --raw --kill-others \"npm run telemetry -- --target=gcp\" \"npm start\""
   },
   "bin": {
-    "gemini": "bundle/gemini.js"
+    "grok": "bundle/gemini.js"
   },
   "files": [
     "bundle/",
