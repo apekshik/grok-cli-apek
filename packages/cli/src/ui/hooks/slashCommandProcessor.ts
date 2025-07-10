@@ -246,13 +246,14 @@ export const useSlashCommandProcessor = (
             // Show current provider info
             addMessage({
               type: MessageType.INFO,
-              content: `Current provider: ${currentProvider}\nCurrent model: ${currentModel}\n\nUsage:\n/provider grok - Switch to Grok 3 Latest\n/provider grok-mini - Switch to Grok 3 Mini\n/provider gemini - Switch to Gemini`,
+              content: `Current provider: ${currentProvider}\nCurrent model: ${currentModel}\n\nUsage:\n/provider grok - Switch to Grok 3 Latest\n/provider grok-mini - Switch to Grok 3 Mini\n/provider grok-4 - Switch to Grok 4 Latest\n/provider grok-4-mini - Switch to Grok 4 Mini\n/provider gemini - Switch to Gemini`,
               timestamp: new Date(),
             });
             return;
           }
 
-          if (subCommand.toLowerCase() === 'grok' || subCommand.toLowerCase() === 'grok-mini') {
+          if (subCommand.toLowerCase() === 'grok' || subCommand.toLowerCase() === 'grok-mini' || 
+              subCommand.toLowerCase() === 'grok-4' || subCommand.toLowerCase() === 'grok-4-mini') {
             // Check if Grok API key is available
             if (!process.env.XAI_API_KEY) {
               addMessage({
@@ -263,17 +264,32 @@ export const useSlashCommandProcessor = (
               return;
             }
             
-            const isGrokMini = subCommand.toLowerCase() === 'grok-mini';
-            const modelName = isGrokMini ? 'grok-3-mini-latest' : 'grok-3-latest';
+            let modelName: string;
+            switch (subCommand.toLowerCase()) {
+              case 'grok-mini':
+                modelName = 'grok-3-mini-latest';
+                break;
+              case 'grok-4':
+                modelName = 'grok-4-latest';
+                break;
+              case 'grok-4-mini':
+                modelName = 'grok-4-mini-latest';
+                break;
+              default:
+                modelName = 'grok-3-latest';
+            }
             
             // Switch to Grok
             try {
               await config.refreshAuth(AuthType.USE_GROK);
               // Set the specific model after switching
               config.setModel(modelName);
+              const displayName = modelName.includes('grok-4') ? 
+                (modelName.includes('mini') ? 'Grok 4 Mini' : 'Grok 4') : 
+                (modelName.includes('mini') ? 'Grok 3 Mini' : 'Grok 3');
               addMessage({
                 type: MessageType.INFO,
-                content: `✅ Switched to Grok successfully! New conversations will use ${isGrokMini ? 'Grok 3 Mini' : 'Grok 3'} with ${modelName} model.`,
+                content: `✅ Switched to Grok successfully! New conversations will use ${displayName} with ${modelName} model.`,
                 timestamp: new Date(),
               });
             } catch (error) {
@@ -312,7 +328,7 @@ export const useSlashCommandProcessor = (
           } else {
             addMessage({
               type: MessageType.ERROR,
-              content: `Unknown provider: ${subCommand}\n\nAvailable providers:\n- grok (Grok 3 Latest)\n- grok-mini (Grok 3 Mini)\n- gemini`,
+              content: `Unknown provider: ${subCommand}\n\nAvailable providers:\n- grok (Grok 3 Latest)\n- grok-mini (Grok 3 Mini)\n- grok-4 (Grok 4 Latest)\n- grok-4-mini (Grok 4 Mini)\n- gemini`,
               timestamp: new Date(),
             });
           }

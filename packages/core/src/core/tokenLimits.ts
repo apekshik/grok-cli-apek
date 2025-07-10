@@ -30,6 +30,9 @@ export function tokenLimit(model: Model): TokenCount {
     case 'grok-3-mini-latest':
     case 'grok-beta':
       return 131_072; // 131K tokens as per xAI documentation
+    case 'grok-4-latest':
+    case 'grok-4-mini-latest':
+      return 131_072; // 131K tokens - using same as Grok 3 until xAI updates docs
     default:
       return DEFAULT_TOKEN_LIMIT;
   }
