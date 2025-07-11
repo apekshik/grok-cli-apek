@@ -26,9 +26,8 @@ export function useTodoManager(): UseTodoManagerReturn {
   const [todos, setTodos] = useState<TodoItem[]>([]);
   const [currentTodoId, setCurrentTodoId] = useState<string | null>(null);
 
-  const generateId = useCallback((): string => {
-    return Date.now().toString(36) + Math.random().toString(36).substr(2);
-  }, []);
+  const generateId = useCallback((): string => 
+    Date.now().toString(36) + Math.random().toString(36).substr(2), []);
 
   const addTodo = useCallback((todoData: Omit<TodoItem, 'id' | 'createdAt' | 'updatedAt'>): string => {
     const id = generateId();
@@ -93,9 +92,8 @@ export function useTodoManager(): UseTodoManagerReturn {
     setTodos(prev => prev.filter(todo => todo.status !== 'completed'));
   }, []);
 
-  const getTodoById = useCallback((id: string): TodoItem | undefined => {
-    return todos.find(todo => todo.id === id);
-  }, [todos]);
+  const getTodoById = useCallback((id: string): TodoItem | undefined => 
+    todos.find(todo => todo.id === id), [todos]);
 
   return {
     todos,

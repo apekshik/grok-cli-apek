@@ -9,7 +9,6 @@ import { Box } from 'ink';
 import { IndividualToolCallDisplay, ToolCallStatus } from '../../types.js';
 import { ToolMessage } from './ToolMessage.js';
 import { ToolConfirmationMessage } from './ToolConfirmationMessage.js';
-import { Colors } from '../../colors.js';
 import { Config } from '@google/gemini-cli-core';
 
 interface ToolGroupMessageProps {
@@ -29,15 +28,10 @@ export const ToolGroupMessage: React.FC<ToolGroupMessageProps> = ({
   config,
   isFocused = true,
 }) => {
-  const hasPending = !toolCalls.every(
-    (t) => t.status === ToolCallStatus.Success,
-  );
-  const borderColor = hasPending ? Colors.AccentYellow : Colors.Gray;
 
-  const staticHeight = /* border */ 2 + /* marginBottom */ 1;
-  // This is a bit of a magic number, but it accounts for the border and
-  // marginLeft.
-  const innerWidth = terminalWidth - 4;
+  const staticHeight = /* marginBottom */ 1;
+  // Width without border
+  const innerWidth = terminalWidth;
 
   // only prompt for tool approval on the first 'confirming' tool in the list
   // note, after the CTA, this automatically moves over to the next 'confirming' tool
@@ -66,17 +60,8 @@ export const ToolGroupMessage: React.FC<ToolGroupMessageProps> = ({
   return (
     <Box
       flexDirection="column"
-      borderStyle="round"
-      /*
-        This width constraint is highly important and protects us from an Ink rendering bug.
-        Since the ToolGroup can typically change rendering states frequently, it can cause
-        Ink to render the border of the box incorrectly and span multiple lines and even
-        cause tearing.
-      */
       width="100%"
-      marginLeft={1}
-      borderDimColor={hasPending}
-      borderColor={borderColor}
+      marginLeft={0}
     >
       {toolCalls.map((tool) => {
         const isConfirming = toolAwaitingApproval?.callId === tool.callId;

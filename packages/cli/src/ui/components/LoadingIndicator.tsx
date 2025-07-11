@@ -31,7 +31,9 @@ export const LoadingIndicator: React.FC<LoadingIndicatorProps> = ({
     return null;
   }
 
-  const primaryText = thought?.subject || currentLoadingPhrase;
+  const primaryText = thought?.subject
+    ? `🤔 ${thought.subject}`
+    : currentLoadingPhrase;
 
   return (
     <Box marginTop={1} paddingLeft={0} flexDirection="column">
@@ -42,11 +44,19 @@ export const LoadingIndicator: React.FC<LoadingIndicatorProps> = ({
             nonRespondingDisplay={
               streamingState === StreamingState.WaitingForConfirmation
                 ? '⠏'
-                : ''
+                : thought?.subject
+                  ? '🤔'
+                  : ''
             }
           />
         </Box>
-        {primaryText && <Text color={Colors.AccentPurple}>{primaryText}</Text>}
+        {primaryText && (
+          <Text
+            color={thought?.subject ? Colors.AccentYellow : Colors.AccentPurple}
+          >
+            {primaryText}
+          </Text>
+        )}
         <Text color={Colors.Gray}>
           {streamingState === StreamingState.WaitingForConfirmation
             ? ''

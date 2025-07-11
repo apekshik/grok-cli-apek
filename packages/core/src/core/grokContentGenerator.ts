@@ -64,7 +64,7 @@ export class GrokContentGenerator implements ContentGenerator {
         if (typeof content === 'string') {
           messages.push({
             role: 'user',
-            content: content,
+            content,
           });
         } else if (this.isContent(content)) {
           if (content.role === 'user') {
@@ -302,9 +302,23 @@ export class GrokContentGenerator implements ContentGenerator {
       const functionCalls: any[] = [];
       let cleanedTextContent = delta.content || '';
 
+      // Handle reasoning content for supported models (grok-3-mini-latest, etc.)
+      if ((delta as any).reasoning_content) {
+        const reasoningText = (delta as any).reasoning_content;
+        // Convert reasoning content to thought format
+        const thoughtPart = {
+          thought: true,
+          text: `**Thinking** ${reasoningText}`,
+        };
+        parts.push(thoughtPart);
+      }
+
       // Accumulate content to detect complete function calls
       if (delta.content) {
         accumulatedContent += delta.content;
+        
+        // Note: All current Grok models (including Grok 4) return reasoning_content
+        // via the API, so no client-side pattern detection is needed
       }
 
       // Check for complete function call blocks in accumulated content
@@ -423,7 +437,7 @@ export class GrokContentGenerator implements ContentGenerator {
     return { totalTokens: estimatedTokens };
   }
 
-  async embedContent(request: EmbedContentParameters): Promise<EmbedContentResponse> {
+  async embedContent(_request: EmbedContentParameters): Promise<EmbedContentResponse> {
     // Grok doesn't support embeddings currently
     throw new Error('Embeddings not supported by Grok');
   }

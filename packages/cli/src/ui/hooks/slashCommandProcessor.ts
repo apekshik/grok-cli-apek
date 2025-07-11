@@ -246,7 +246,7 @@ export const useSlashCommandProcessor = (
             // Show current provider info
             addMessage({
               type: MessageType.INFO,
-              content: `Current provider: ${currentProvider}\nCurrent model: ${currentModel}\n\nUsage:\n/provider grok - Switch to Grok 3 Latest\n/provider grok-mini - Switch to Grok 3 Mini\n/provider grok-4 - Switch to Grok 4 Latest\n/provider grok-4-mini - Switch to Grok 4 Mini\n/provider gemini - Switch to Gemini`,
+              content: `Current provider: ${currentProvider}\nCurrent model: ${currentModel}\n\nUsage:\n/provider grok - Switch to Grok 3 Latest\n/provider grok-mini - Switch to Grok 3 Mini (with reasoning)\n/provider grok-4 - Switch to Grok 4 Latest (with reasoning)\n/provider grok-4-mini - Switch to Grok 4 Mini (with reasoning)\n/provider gemini - Switch to Gemini`,
               timestamp: new Date(),
             });
             return;
@@ -328,7 +328,7 @@ export const useSlashCommandProcessor = (
           } else {
             addMessage({
               type: MessageType.ERROR,
-              content: `Unknown provider: ${subCommand}\n\nAvailable providers:\n- grok (Grok 3 Latest)\n- grok-mini (Grok 3 Mini)\n- grok-4 (Grok 4 Latest)\n- grok-4-mini (Grok 4 Mini)\n- gemini`,
+              content: `Unknown provider: ${subCommand}\n\nAvailable providers:\n- grok (Grok 3 Latest)\n- grok-mini (Grok 3 Mini with reasoning)\n- grok-4 (Grok 4 Latest with reasoning)\n- grok-4-mini (Grok 4 Mini with reasoning)\n- gemini`,
               timestamp: new Date(),
             });
           }

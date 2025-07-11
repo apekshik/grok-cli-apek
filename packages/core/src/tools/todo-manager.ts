@@ -30,7 +30,7 @@ export interface TodoManagerParams {
   status?: 'pending' | 'in_progress' | 'completed' | 'cancelled';
   priority?: 'high' | 'medium' | 'low';
   parentId?: string;
-  todos?: Partial<TodoItem>[];
+  todos?: Array<Partial<TodoItem>>;
 }
 
 export class TodoManagerTool extends BaseTool<TodoManagerParams, ToolResult> {
@@ -151,6 +151,12 @@ The TODO list is displayed in the chat interface to show real-time progress to t
           return `${params.action} action requires todoId`;
         }
         break;
+      case 'list':
+      case 'clear':
+        // No additional validation needed
+        break;
+      default:
+        return `Unknown action: ${params.action}`;
     }
 
     return null;

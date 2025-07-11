@@ -5,8 +5,7 @@
  */
 
 import React from 'react';
-import { Box, Text } from 'ink';
-import { Colors } from '../../colors.js';
+import { Box } from 'ink';
 import { TodoItem } from '../../types.js';
 import { TodoDisplay } from '../TodoDisplay.js';
 
@@ -15,10 +14,8 @@ interface TodoMessageProps {
   currentTodoId?: string;
 }
 
-export const TodoMessage: React.FC<TodoMessageProps> = ({ todos, currentTodoId }) => {
-  return (
-    <Box flexDirection="column" marginY={1}>
-      <TodoDisplay todos={todos} currentTodoId={currentTodoId} />
-    </Box>
-  );
-};
+export const TodoMessage: React.FC<TodoMessageProps> = ({ todos, currentTodoId }) => (
+  <Box flexDirection="column" marginY={1}>
+    <TodoDisplay todos={todos} currentTodoId={currentTodoId} />
+  </Box>
+);

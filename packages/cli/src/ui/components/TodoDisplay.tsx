@@ -62,7 +62,6 @@ interface TodoItemProps {
 const TodoItem: React.FC<TodoItemProps> = ({ todo, isLast, isCurrent }) => {
   const connector = isLast ? '⎿' : '⎿';
   const statusIcon = getStatusIcon(todo.status);
-  const priorityColor = getPriorityColor(todo.priority);
   
   // Color coding based on status
   let textColor = Colors.Foreground;
@@ -104,18 +103,6 @@ function getStatusIcon(status: string): string {
   }
 }
 
-function getPriorityColor(priority: string): string {
-  switch (priority) {
-    case 'high':
-      return '🔴 ';
-    case 'medium':
-      return '🟡 ';
-    case 'low':
-      return '🟢 ';
-    default:
-      return '';
-  }
-}
 
 function getPriorityColorCode(priority: string): string {
   switch (priority) {
