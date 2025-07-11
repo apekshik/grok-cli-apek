@@ -124,6 +124,22 @@ export type HistoryItemCompression = HistoryItemBase & {
   compression: CompressionProps;
 };
 
+export interface TodoItem {
+  id: string;
+  content: string;
+  status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
+  priority: 'high' | 'medium' | 'low';
+  createdAt: Date;
+  updatedAt: Date;
+  parentId?: string;
+}
+
+export type HistoryItemTodo = HistoryItemBase & {
+  type: 'todo';
+  todos: TodoItem[];
+  currentTodoId?: string;
+};
+
 // Using Omit<HistoryItem, 'id'> seems to have some issues with typescript's
 // type inference e.g. historyItem.type === 'tool_group' isn't auto-inferring that
 // 'tools' in historyItem.
@@ -139,13 +155,15 @@ export type HistoryItemWithoutId =
   | HistoryItemToolGroup
   | HistoryItemStats
   | HistoryItemQuit
-  | HistoryItemCompression;
+  | HistoryItemCompression
+  | HistoryItemTodo;
 
 export type HistoryItem = HistoryItemWithoutId & { id: number };
 
 // Message types used by internal command feedback (subset of HistoryItem types)
 export enum MessageType {
   INFO = 'info',
+  TODO = 'todo',
   ERROR = 'error',
   USER = 'user',
   ABOUT = 'about',

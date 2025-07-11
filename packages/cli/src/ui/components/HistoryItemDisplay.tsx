@@ -14,6 +14,7 @@ import { ErrorMessage } from './messages/ErrorMessage.js';
 import { ToolGroupMessage } from './messages/ToolGroupMessage.js';
 import { GeminiMessageContent } from './messages/GeminiMessageContent.js';
 import { CompressionMessage } from './messages/CompressionMessage.js';
+import { TodoMessage } from './messages/TodoMessage.js';
 import { Box } from 'ink';
 import { AboutBox } from './AboutBox.js';
 import { StatsDisplay } from './StatsDisplay.js';
@@ -89,6 +90,9 @@ export const HistoryItemDisplay: React.FC<HistoryItemDisplayProps> = ({
     )}
     {item.type === 'compression' && (
       <CompressionMessage compression={item.compression} />
+    )}
+    {item.type === 'todo' && (
+      <TodoMessage todos={item.todos} currentTodoId={item.currentTodoId} />
     )}
   </Box>
 );
